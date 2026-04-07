@@ -38,8 +38,34 @@ def save_posts(posts):
         json.dump(posts, f, indent=4)
 
 
-@app.route('/api/posts', methods=['GET', 'POST'])
+def create_new_id(blog_posts: list[dict]) -> int:
+    return max(post['id'] for post in blog_posts) + 1 if blog_posts else 1
+
+
+def check_post_data(post_data: dict[str, str]) -> bool:
+    if 'title' not in post_data or 'content' not in post_data:
+        return False
+    return True
+
+
+@app.route('/api/posts', methods=['GET'])
 def get_posts():
+    """
+    Handle GET and POST requests for blog posts.
+    GET:
+        Retrieve all blog posts from the JSON file.
+    POST:
+        Create a new blog post.
+        Expects a JSON object in the request body with the following fields:
+            - title (str): The title of the blog post.
+            - content (str): The content of the blog post.
+        Returns:
+            JSON: The newly created blog post with a unique ID.
+            Status Code:
+                201 - If the post was successfully created.
+                400 - If required fields are missing or request body is invalid.
+                500 - If there is an error reading or writing the JSON file.
+    """
     try:
         blog_posts = load_posts()
     except FileNotFoundError:
@@ -47,10 +73,22 @@ def get_posts():
     except json.JSONDecodeError:
         return jsonify({'error': 'posts.json is an invalid JSON.'}), 500
 
-    if request.method == 'GET':
-        return jsonify(blog_posts)
+    return jsonify(blog_posts)
+
+
+@app.route('/api/posts', methods=['POST'])
+def add_post():
+    try:
+        blog_posts = load_posts()
+    except FileNotFoundError:
+        blog_posts = []
+    except json.JSONDecodeError:
+        return jsonify({'error': 'posts.json is an invalid JSON.'}), 500
 
     data = request.get_json()
+
+    if not data:
+        return jsonify({'error': 'request must be valid JSON'}), 400
 
     missing_data = []
 
@@ -59,16 +97,14 @@ def get_posts():
     if not data.get('content'):
         missing_data.append('content')
 
-    if missing_data:
+    if not check_post_data(data) or missing_data:
         return jsonify({
             'error': 'Missing Title or Content',
             'missing_data': missing_data
         }), 400
 
-    new_id = max(post['id'] for post in blog_posts) + 1 if blog_posts else 1
-
     new_post = {
-        'id': new_id,
+        'id': create_new_id(blog_posts),
         'title': data.get('title'),
         'content': data.get('content')
     }
