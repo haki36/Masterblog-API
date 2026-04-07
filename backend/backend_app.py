@@ -100,6 +100,54 @@ def delete_post(post_id):
     })
 
 
+@app.route('/api/posts/<int:post_id>', methods=['PUT'])
+def update_post(post_id):
+    """
+    Update an existing blog post by its ID.
+    Args:
+        post_id (int): The ID of the blog post to update.
+    Expects:
+        A JSON request body containing:
+            - title (str): The updated title of the post.
+            - content (str): The updated content of the post.
+    Returns:
+        Response: A JSON response containing the updated blog post.
+    Status Codes:
+        200: If the post was updated successfully.
+        400: If the request body is invalid or required fields are missing.
+        404: If no post with the given ID exists.
+    """
+    blog_posts = load_posts()
+    post_update = find_post(post_id)
+
+    if post_update is None:
+        return jsonify({
+            'error': f'Post id {post_id} not found'
+        }), 404
+
+    data = request.get_json()
+
+    if not data:
+        return jsonify({
+            'error': 'Request must be valid JSON'
+        }), 400
+
+    if not check_post_data(data):
+        return jsonify({
+            'error': 'Missing Title or Content'
+        }), 400
+
+    if 'title' in data:
+        post_update['title'] = data['title']
+    if 'content' in data:
+        post_update['content'] = data['content']
+
+    save_posts(blog_posts)
+    return jsonify(
+        post_update
+    )
+
+
 @app.route('/api/posts', methods=['GET'])
 def get_posts():
     """
