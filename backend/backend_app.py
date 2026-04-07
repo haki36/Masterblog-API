@@ -39,13 +39,65 @@ def save_posts(posts):
 
 
 def create_new_id(blog_posts: list[dict]) -> int:
+    """
+    Generate a new unique ID for a blog post.
+    Args:
+        blog_posts (list[dict]): A list of existing blog post dictionaries.
+    Returns:
+        int: A new unique integer ID. Returns 1 if no posts exist.
+    """
     return max(post['id'] for post in blog_posts) + 1 if blog_posts else 1
 
 
 def check_post_data(post_data: dict[str, str]) -> bool:
+    """
+    Validate that the blog post data contains the required fields.
+    Args:
+        post_data (dict[str, str]): The JSON data for a blog post.
+    Returns:
+        bool: True if both 'title' and 'content' are present, otherwise False.
+    """
     if 'title' not in post_data or 'content' not in post_data:
         return False
     return True
+
+
+def find_post(post_id: int):
+    """
+    Find a blog post by its ID.
+    Args:
+        post_id (int): The ID of the blog post to find.
+    Returns:
+        dict | None: The matching blog post dictionary if found, otherwise None.
+    """
+    blog_posts = load_posts()
+    return next((post for post in blog_posts if post['id'] == post_id), None)
+
+
+@app.route('/api/posts/<int:post_id>', methods=['DELETE'])
+def delete_post(post_id):
+    """
+    Delete a blog post by its ID.
+    Args:
+        post_id (int): The ID of the blog post to delete.
+    Returns:
+        Response: A JSON response with a success message if the post was deleted,
+        or an error message with status code 404 if the post was not found.
+    """
+    blog_posts = load_posts()
+    post_delete = find_post(post_id)
+
+    if post_delete is None:
+        return jsonify({
+            'error': f'Post id {post_id} not found'
+        }), 404
+
+    blog_posts.remove(post_delete)
+
+    save_posts(blog_posts)
+    return jsonify({
+        "message": f"Post with id {post_id} has been deleted successfully."
+    })
 
 
 @app.route('/api/posts', methods=['GET'])
@@ -78,6 +130,19 @@ def get_posts():
 
 @app.route('/api/posts', methods=['POST'])
 def add_post():
+    """
+    Create a new blog post.
+    Expects:
+        A JSON request body containing:
+            - title (str): The title of the new post.
+            - content (str): The content of the new post.
+    Returns:
+        Response: A JSON response containing the newly created post with a unique ID.
+    Status Codes:
+        201: If the post was created successfully.
+        400: If the request body is invalid or required fields are missing.
+        500: If there is an error reading or writing the JSON file.
+    """
     try:
         blog_posts = load_posts()
     except FileNotFoundError:
