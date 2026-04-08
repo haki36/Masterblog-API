@@ -145,6 +145,18 @@ def update_post(post_id):
 
 @app.route('/api/posts/search')
 def search_post():
+    """
+    Search blog posts by title and/or content.
+    Query Parameters:
+        title (str, optional): A keyword to search for in the post titles.
+        content (str, optional): A keyword to search for in the post content.
+    Returns:
+        Response: A JSON list of blog posts that match the search criteria.
+    Notes:
+        - If both 'title' and 'content' are provided, only posts matching both conditions are returned.
+        - If no query parameters are provided, all blog posts are returned.
+        - Returns an empty list if no matching posts are found.
+    """
     blog_posts = load_posts()
     search_title = request.args.get('title')
     search_content = request.args.get('content')
