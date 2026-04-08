@@ -1,7 +1,15 @@
+"""
+Masterblog API.
+
+This Flask application manages blog posts stored in a JSON file.
+It provides endpoints for listing, creating, updating, deleting,
+searching, and sorting blog posts. Swagger UI is included for
+API documentation and testing.
+"""
 import json
 import os
 
-from flask import Flask, jsonify, request, redirect, url_for
+from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_swagger_ui import get_swaggerui_blueprint
 
@@ -61,9 +69,9 @@ def create_new_id(blog_posts: list[dict]) -> int:
     return max(post['id'] for post in blog_posts) + 1 if blog_posts else 1
 
 
-def check_post_data(post_data: dict[str, str]) -> bool:
+def has_required_post_fields(post_data: dict[str, str]) -> bool:
     """
-    Validate that the blog post data contains the required fields.
+    Check whether the provided blog post data contains all required fields.
     Args:
         post_data (dict[str, str]): The JSON data for a blog post.
     Returns:
@@ -74,15 +82,15 @@ def check_post_data(post_data: dict[str, str]) -> bool:
     return True
 
 
-def find_post(post_id: int):
+def find_post(post_id: int, blog_posts: list[dict]):
     """
-    Find a blog post by its ID.
+    Find a blog post by its ID in the given list of blog posts.
     Args:
         post_id (int): The ID of the blog post to find.
+        blog_posts (list[dict]): The list of blog post dictionaries to search in.
     Returns:
         dict | None: The matching blog post dictionary if found, otherwise None.
     """
-    blog_posts = load_posts()
     return next((post for post in blog_posts if post['id'] == post_id), None)
 
 
@@ -94,10 +102,20 @@ def delete_post(post_id):
         post_id (int): The ID of the blog post to delete.
     Returns:
         Response: A JSON response with a success message if the post was deleted,
-        or an error message with status code 404 if the post was not found.
+        or an error message if the post was not found or the JSON file is invalid.
+    Status Codes:
+        200: If the post was deleted successfully.
+        404: If no post with the given ID exists.
+        500: If posts.json contains invalid JSON.
     """
-    blog_posts = load_posts()
-    post_delete = find_post(post_id)
+    try:
+        blog_posts = load_posts()
+    except FileNotFoundError:
+        blog_posts = []
+    except json.JSONDecodeError:
+        return jsonify({'error': 'posts.json is an invalid JSON.'}), 500
+
+    post_delete = find_post(post_id, blog_posts)
 
     if post_delete is None:
         return jsonify({
@@ -109,7 +127,7 @@ def delete_post(post_id):
     save_posts(blog_posts)
     return jsonify({
         "message": f"Post with id {post_id} has been deleted successfully."
-    })
+    }), 200
 
 
 @app.route('/api/posts/<int:post_id>', methods=['PUT'])
@@ -128,9 +146,16 @@ def update_post(post_id):
         200: If the post was updated successfully.
         400: If the request body is invalid.
         404: If no post with the given ID exists.
+        500: If posts.json contains invalid JSON.
     """
-    blog_posts = load_posts()
-    post_update = find_post(post_id)
+    try:
+        blog_posts = load_posts()
+    except FileNotFoundError:
+        blog_posts = []
+    except json.JSONDecodeError:
+        return jsonify({'error': 'posts.json is an invalid JSON.'}), 500
+
+    post_update = find_post(post_id, blog_posts)
 
     if post_update is None:
         return jsonify({
@@ -164,12 +189,21 @@ def search_post():
         content (str, optional): A keyword to search for in the post content.
     Returns:
         Response: A JSON list of blog posts that match the search criteria.
+    Status Codes:
+        200: If matching posts are returned successfully.
+        500: If posts.json contains invalid JSON.
     Notes:
         - If both 'title' and 'content' are provided, only posts matching both conditions are returned.
         - If no query parameters are provided, all blog posts are returned.
         - Returns an empty list if no matching posts are found.
     """
-    blog_posts = load_posts()
+    try:
+        blog_posts = load_posts()
+    except FileNotFoundError:
+        blog_posts = []
+    except json.JSONDecodeError:
+        return jsonify({'error': 'posts.json is an invalid JSON.'}), 500
+
     search_title = request.args.get('title')
     search_content = request.args.get('content')
 
@@ -201,8 +235,8 @@ def get_posts():
         Response: A JSON list of blog posts.
     Status Codes:
         200: If posts are returned successfully.
-        400: If sort field or direction is invalid.
-        500: If posts.json is missing or contains invalid JSON.
+        400: If sort field or direction is invalid, or if only one sorting parameter is provided.
+        500: If posts.json contains invalid JSON.
     """
     sorted_by = request.args.get('sort')
     sorted_direction = request.args.get('direction')
@@ -213,8 +247,13 @@ def get_posts():
     except json.JSONDecodeError:
         return jsonify({'error': 'posts.json is an invalid JSON.'}), 500
 
-    if sorted_by is None or sorted_direction is None:
+    if sorted_by is None and sorted_direction is None:
         return jsonify(blog_posts)
+
+    if sorted_by is None or sorted_direction is None:
+        return jsonify({
+            'error': 'Both "sort" and "direction" query parameters are required.'
+        }), 400
 
     if sorted_by not in ['title', 'content']:
         return jsonify({
@@ -270,7 +309,7 @@ def add_post():
     if not data.get('content'):
         missing_data.append('content')
 
-    if not check_post_data(data) or missing_data:
+    if not has_required_post_fields(data) or missing_data:
         return jsonify({
             'error': 'Missing Title or Content',
             'missing_data': missing_data
