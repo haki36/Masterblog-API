@@ -143,6 +143,29 @@ def update_post(post_id):
     ), 200
 
 
+@app.route('/api/posts/search')
+def search_post():
+    blog_posts = load_posts()
+    search_title = request.args.get('title')
+    search_content = request.args.get('content')
+
+    results = blog_posts
+
+    if search_title:
+        results = [
+            post for post in results
+            if search_title.lower() in post['title'].lower()
+        ]
+
+    if search_content:
+        results = [
+            post for post in results
+            if search_content.lower() in post['content'].lower()
+        ]
+
+    return jsonify(results)
+
+
 @app.route('/api/posts', methods=['GET'])
 def get_posts():
     """
