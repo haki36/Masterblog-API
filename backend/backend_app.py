@@ -193,7 +193,8 @@ def search_post():
         200: If matching posts are returned successfully.
         500: If posts.json contains invalid JSON.
     Notes:
-        - If both 'title' and 'content' are provided, only posts matching both conditions are returned.
+        - If both 'title' and 'content' are provided, only posts matching
+        both conditions are returned.
         - If no query parameters are provided, all blog posts are returned.
         - Returns an empty list if no matching posts are found.
     """
