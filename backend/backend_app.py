@@ -181,21 +181,19 @@ def search_post():
 @app.route('/api/posts', methods=['GET'])
 def get_posts():
     """
-    Handle GET and POST requests for blog posts.
-    GET:
-        Retrieve all blog posts from the JSON file.
-    POST:
-        Create a new blog post.
-        Expects a JSON object in the request body with the following fields:
-            - title (str): The title of the blog post.
-            - content (str): The content of the blog post.
-        Returns:
-            JSON: The newly created blog post with a unique ID.
-            Status Code:
-                201 - If the post was successfully created.
-                400 - If required fields are missing or request body is invalid.
-                500 - If there is an error reading or writing the JSON file.
+    Retrieve all blog posts, optionally sorted by title or content.
+    Query Parameters:
+        sort (str, optional): Field to sort by. Allowed values: 'title', 'content'.
+        direction (str, optional): Sort direction. Allowed values: 'asc', 'desc'.
+    Returns:
+        Response: A JSON list of blog posts.
+    Status Codes:
+        200: If posts are returned successfully.
+        400: If sort field or direction is invalid.
+        500: If posts.json is missing or contains invalid JSON.
     """
+    sorted_by = request.args.get('sort')
+    sorted_direction = request.args.get('direction')
     try:
         blog_posts = load_posts()
     except FileNotFoundError:
@@ -203,7 +201,27 @@ def get_posts():
     except json.JSONDecodeError:
         return jsonify({'error': 'posts.json is an invalid JSON.'}), 500
 
-    return jsonify(blog_posts)
+    if sorted_by is None or sorted_direction is None:
+        return jsonify(blog_posts)
+
+    if sorted_by not in ['title', 'content']:
+        return jsonify({
+            'error': 'Invalid sort field. Use "title" or "content".'
+        }), 400
+    if sorted_direction not in ['asc', 'desc']:
+        return jsonify({
+            'error': 'Invalid direction. Use "asc" or "desc".'
+        }), 400
+
+    reverse_sort = sorted_direction == 'desc'
+
+    sorted_posts = sorted(
+        blog_posts,
+        key=lambda post: post[sorted_by].lower(),
+        reverse=reverse_sort
+    )
+
+    return jsonify(sorted_posts)
 
 
 @app.route('/api/posts', methods=['POST'])
