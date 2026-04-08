@@ -1,0 +1,355 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Masterblog API",
+    "version": "1.0.0",
+    "description": "API for managing blog posts with CRUD, search, and sorting functionality."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5002"
+    }
+  ],
+  "tags": [
+    {
+      "name": "Posts",
+      "description": "Operations related to blog posts"
+    }
+  ],
+  "paths": {
+    "/api/posts": {
+      "get": {
+        "tags": ["Posts"],
+        "summary": "Get all blog posts",
+        "description": "Returns all blog posts. Optionally sorts posts by title or content.",
+        "parameters": [
+          {
+            "name": "sort",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["title", "content"]
+            },
+            "description": "Field to sort by"
+          },
+          {
+            "name": "direction",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "enum": ["asc", "desc"]
+            },
+            "description": "Sort direction"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "A list of blog posts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Post"
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid sort field or direction",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Invalid JSON file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": ["Posts"],
+        "summary": "Create a new blog post",
+        "description": "Creates a new blog post with a unique integer ID.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NewPost"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Blog post created successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Missing required fields or invalid JSON body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ValidationErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Could not read or write posts.json",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/posts/{post_id}": {
+      "put": {
+        "tags": ["Posts"],
+        "summary": "Update an existing blog post",
+        "description": "Updates an existing blog post by ID. Title and content are optional, and existing values stay unchanged if omitted.",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID of the blog post to update"
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdatePost"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Blog post updated successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Post"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid JSON body",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Post not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "tags": ["Posts"],
+        "summary": "Delete a blog post",
+        "description": "Deletes a blog post by ID.",
+        "parameters": [
+          {
+            "name": "post_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer"
+            },
+            "description": "ID of the blog post to delete"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Blog post deleted successfully",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MessageResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Post not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/posts/search": {
+      "get": {
+        "tags": ["Posts"],
+        "summary": "Search blog posts",
+        "description": "Searches blog posts by title and/or content.",
+        "parameters": [
+          {
+            "name": "title",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Keyword to search for in post titles"
+          },
+          {
+            "name": "content",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "string"
+            },
+            "description": "Keyword to search for in post content"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "List of matching blog posts",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Post"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "Post": {
+        "type": "object",
+        "required": ["id", "title", "content"],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "example": 1
+          },
+          "title": {
+            "type": "string",
+            "example": "First post"
+          },
+          "content": {
+            "type": "string",
+            "example": "This is the first post."
+          }
+        }
+      },
+      "NewPost": {
+        "type": "object",
+        "required": ["title", "content"],
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "New blog post"
+          },
+          "content": {
+            "type": "string",
+            "example": "This is the content of the new blog post."
+          }
+        }
+      },
+      "UpdatePost": {
+        "type": "object",
+        "properties": {
+          "title": {
+            "type": "string",
+            "example": "Updated title"
+          },
+          "content": {
+            "type": "string",
+            "example": "Updated content"
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "Post id 99 not found"
+          }
+        }
+      },
+      "ValidationErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "string",
+            "example": "Missing Title or Content"
+          },
+          "missing_data": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "example": ["title", "content"]
+          }
+        }
+      },
+      "MessageResponse": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string",
+            "example": "Post with id 1 has been deleted successfully."
+          }
+        }
+      }
+    }
+  }
+}
